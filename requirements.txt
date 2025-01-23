@@ -1,0 +1,4 @@
+openai==1.60.0
+pydantic==2.10.5
+duckduckgo_search==7.2.1
+beautifulsoup4==4.12.3
