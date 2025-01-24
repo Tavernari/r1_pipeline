@@ -1,6 +1,6 @@
 import asyncio
 import os
-from pipeline import Pipeline
+from r1_deepseek_reasoner import Pipeline
 
 async def validate_pipeline(user_input: str):
     # Initialize the pipeline
@@ -16,7 +16,12 @@ async def validate_pipeline(user_input: str):
         await pipeline.on_startup()
         
         # Prepare test messages
-        messages = []
+        messages = [
+            {
+                "role": "user",
+                "content": user_input
+            },
+        ]
         
         # Execute the pipeline
         response = pipeline.pipe(
@@ -37,7 +42,8 @@ async def validate_pipeline(user_input: str):
 
 def main():
     # Get user input
-    user_input = input("Enter your message to test the pipeline: ")
+    # user_input = input("Enter your message to test the pipeline: ")
+    user_input = "As indicacoes para melhor atriz, melhor filme e melhor filme internacional do oscar 2025?"
     
     # Run the async validation
     asyncio.run(validate_pipeline(user_input))

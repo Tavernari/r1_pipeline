@@ -3,3 +3,7 @@ pydantic==2.10.5
 duckduckgo_search==7.2.1
 beautifulsoup4==4.12.3
 typing-extensions==4.12.2
+schemas==0.7.1
+tavily-python==0.5.0
+trafilatura==2.0.0
+lxml_html_clean==0.4.1
