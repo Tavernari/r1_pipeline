@@ -6,7 +6,7 @@ Version: 0.0.1
 License: MIT
 Description:
     This pipeline give the agentic power to the model deepseek r1 reasoning model.
-Requirements: openai==1.60.0, pydantic==2.10.5, duckduckgo_search==7.2.1, beautifulsoup4==4.12.3
+Requirements: openai==1.60.0, pydantic==2.10.5, duckduckgo_search==7.2.1, beautifulsoup4==4.12.3, typing-extensions==4.12.2
 """
 
 from pydantic import BaseModel, Field
