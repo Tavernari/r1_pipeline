@@ -53,5 +53,8 @@ We welcome contributions to the R1 Pipeline project! Here's how you can help:
 3. Make your changes
 4. Submit a pull request with a clear description of the changes
 
+## Support the Project
+If you find R1 Pipeline useful and would like to support its development, please consider making a donation. See [DONATION_WALLETS.md](DONATION_WALLETS.md) for available donation options.
+
 ## License
 This project is licensed under the MIT License - see the LICENSE file for details.
