@@ -14,10 +14,11 @@ The project aims to:
 ## Features
 
 ### Core Capabilities
-- **Internet Search**: Perform web searches using DuckDuckGo's search engine
+- **Internet Search**: Perform web searches using Tavily's search engine with customizable parameters
 - **Code Execution**: Run Python code and capture its output
-- **Web Scraping**: Extract and process content from websites
+- **Web Scraping**: Extract and process content from websites using trafilatura
 - **State Management**: Maintain conversation state and handle transitions
+- **LLM Integration**: Built-in integration with Deepseek's language models for content analysis
 
 ### Technical Features
 - Built with modern Python using Pydantic for robust data validation
@@ -26,13 +27,51 @@ The project aims to:
 - Comprehensive error handling and state management
 - Configurable through environment variables
 
+## Architecture
+
+### Pipeline Components
+1. **State Management**
+   - Handles conversation flow through states: NEXT_STEP, ERROR, FINISHED, UNKNOWN
+   - Manages recursive processing with configurable depth
+
+2. **Tool Integration**
+   - Internet Search: Customizable web search with filtering options
+   - Code Execution: Secure Python code execution environment
+   - Web Scraping: Robust content extraction from websites
+
+3. **Message Processing**
+   - Tag-based command system for tool interaction
+   - Structured response format with confidence levels
+   - Markdown output formatting
+
+## Configuration
+
+### Environment Variables
+- `DEEPSEEK_API_KEY`: Your Deepseek API key for LLM access
+- `DEEPSEEK_BASE_URL`: Deepseek API base URL (optional)
+- `TVLY_API_KEY`: Your Tavily API key for web search functionality
+
+### Search Parameters
+- Search depth: 'basic' or 'advanced'
+- Topic filtering: 'general' or 'news'
+- Time range filtering: 'day', 'week', 'month', 'year'
+- Domain inclusion/exclusion lists
+- Image and description options
+
 ## Contributing
 
 We welcome contributions to the R1 Pipeline project! Here's how you can help:
 
 ### Prerequisites
 - Python 3.x
-- Required packages: openai==1.60.0, pydantic==2.10.5, duckduckgo_search==7.2.1, beautifulsoup4==4.12.3
+- Required packages: 
+  - openai==1.60.0
+  - pydantic==2.10.5
+  - typing-extensions==4.12.2
+  - schemas==0.7.1
+  - tavily-python==0.5.0
+  - trafilatura==2.0.0
+  - lxml_html_clean==0.4.1
 
 ### Setup
 1. Clone the repository
@@ -40,6 +79,7 @@ We welcome contributions to the R1 Pipeline project! Here's how you can help:
 3. Set up environment variables:
    - `DEEPSEEK_API_KEY`: Your Deepseek API key
    - `DEEPSEEK_BASE_URL`: Deepseek API base URL (optional)
+   - `TVLY_API_KEY`: Your Tavily API key
 
 ### Development Guidelines
 - Follow PEP 8 style guidelines
@@ -51,10 +91,7 @@ We welcome contributions to the R1 Pipeline project! Here's how you can help:
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Submit a pull request with a clear description of the changes
-
-## Support the Project
-If you find R1 Pipeline useful and would like to support its development, please consider making a donation. See [DONATION_WALLETS.md](DONATION_WALLETS.md) for available donation options.
+4. Submit a pull request
 
 ## License
-This project is licensed under the MIT License - see the LICENSE file for details.
+MIT License - see LICENSE file for details
