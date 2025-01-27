@@ -35,7 +35,8 @@ async def validate_pipeline(user_input: str):
         print(response)
         
     except Exception as e:
-        print(f"Error occurred while running the pipeline: {str(e)}")
+        
+        print(f"Error occurred while running the pipeline: {str(e.with_traceback())}")
     finally:
         # Ensure we properly shut down
         await pipeline.on_shutdown()

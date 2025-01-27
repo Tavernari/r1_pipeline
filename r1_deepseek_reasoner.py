@@ -6,7 +6,7 @@ Version: 0.0.1
 License: MIT
 Description:
     This pipeline give the agentic power to the model deepseek r1 reasoning model.
-Requirements: openai==1.60.0, pydantic==2.10.5, typing-extensions==4.12.2, schemas==0.7.1, tavily-python==0.5.0, trafilatura==2.0.0, lxml_html_clean==0.4.1
+Requirements: openai==1.60.0, pydantic==2.10.5, schemas==0.7.1, tavily-python==0.5.0, trafilatura==2.0.0, lxml_html_clean==0.4.1
 """
 
 from pydantic import BaseModel, Field
@@ -20,17 +20,9 @@ from tavily import TavilyClient
 import subprocess
 import os
 import json
-import urllib.request
 import trafilatura
 
-
 # Mark: Functions
-
-from pydantic import BaseModel, Field
-from typing import Optional, List
-
-from pydantic import BaseModel, Field
-from typing import Optional, List
 
 class TextWebSearchRequest(BaseModel):
     """
@@ -336,6 +328,145 @@ class StateResult(BaseModel):
         description="The message to be sent to the user."
     )
 
+class EvaluationResponse(BaseModel):
+    """
+    Model representing an evaluation response for validating answers.
+    """
+    is_satisfactory: bool = Field(
+        ...,
+        description="Indicates whether the answer meets the quality standards."
+    )
+    improvement_needed: str = Field(
+        ...,
+        description="Detailed explanation of what improvements are needed, if any."
+    )
+
+    model_config = ConfigDict(
+        extra='forbid',
+        strict=True,
+    )
+
+def execute_python_code(code: CodeExecution) -> (str, int):
+    """
+    Executes the given Python code and returns the output and return code.
+
+    Args:
+        code (str): The Python code to execute.
+
+    Returns:
+        Tuple[str, int]: A tuple containing the combined output and the return code.
+    """
+    try:
+        result = subprocess.run(
+            ["python", "-c", code.code],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        stdout = result.stdout.strip()
+        stderr = result.stderr.strip()
+
+        # if fails, return the error message
+        if result.returncode != 0:
+            return stderr
+
+        return stdout
+    except subprocess.CalledProcessError as e:
+        stderr = e.stderr.strip()
+
+        return stderr
+    except Exception as e:
+        return str(e)
+
+
+# Mark: System Config
+
+AVAILABLE_TOOLS = {
+    "INTERNET_SEARCH": {
+        "name": "Internet Search",
+        "description": "Search the internet for the answer to the question.",
+        "function": "internet_search",
+        "input_description": TextWebSearchRequest.schema_json(),
+    },
+    "CODE_EXECUTER": {
+        "name": "Code Executer",
+        "description": "Execute code and return the result.",
+        "function": "code_executer",
+        "input_description": CodeExecution.schema_json(),
+    },
+    "SCRAPING": {
+        "name": "Website Scraping",
+        "description": "Scrape a specific website and return the content. If you need more information about the website, you must use the scraping tool.",
+        "function": "scraping",
+        "input_description": WebSiteContent.schema_json(),
+    },
+    "FINAL_ANSWER": {
+        "name": "Final Answer",
+        "description": "Return the final answer to the question, only if you are 100 percent sure about the answer",
+        "function": "final_answer",
+        "input_description": "The answer to the question.",
+    },
+}
+
+def tag_generator(dict: dict) -> str:
+    """
+    Generate a tag from a tools dictionary
+    Tag must start <function>{input_description}</function>
+    """
+    function = dict.get("function")
+    return (
+        f"\nFunction {dict.get('name')}: {dict.get('description')}\n"
+        f"<{function}>{dict.get('input_description')}</{function}>\n"
+    )
+
+def available_tools_tags_generator(dict: dict) -> str:
+    """
+    Generate a tag from a tools dictionary
+    Tag must start <function>{input_description}</function>
+    """
+    return "\n".join([tag_generator(dict) for dict in dict.values()])
+
+SYSTEM_PROMPT = (
+    "You should help the user to answer the question using the available tools.\n"
+    "Now is: {now}\n"
+    "Your ouput MUST be only a tag based on these available tools:\n"
+    f"Available tools: {available_tools_tags_generator(AVAILABLE_TOOLS)}\n"
+    "MANDATORY: \n"
+    " - Only return one tag per interaction\n"
+    " - If you have source of the information, you must link on the final answer\n"
+    " - Output must be in markdown format\n"
+    " - You must answer using the same language of the question\n"
+    " - Always write the tag <confidence_level></confidence_level> at the end of the answer\n"
+    " - You must only write a final answer when you has a high confidence level\n"
+    " - You never assume any factor or information, you always check the fact of your answer\n"
+    " - If the user doen't specify a date, you must search near to now: {now}\n"
+)
+
+# MARK: Pipeline
+
+# Enum State
+class State(str, Enum):
+    """
+    Enum for the state of the pipeline.
+    """
+    NEXT_STEP = "next_step"
+    ERROR = "error"
+    FINISHED = "finished"
+    UNKNOWN = "unknown"
+
+class StateResult(BaseModel):
+    """
+    Model representing the state of the pipeline.
+    """
+    state: State = Field(
+        ...,
+        description="The state of the pipeline."
+    )
+    message: str = Field(
+        ...,
+        description="The message to be sent to the user."
+    )
+
 class Pipeline:
     """
     Pipeline for processing user messages and interacting with the Deepseek R1 Reasoning model.
@@ -353,6 +484,7 @@ class Pipeline:
 
     def __init__(self):
         self.name = "🤖 R1 Deepseek Reasoner"
+        print("Pipeline: %s", __name__)
         self.valves = self.Valves(
             **{
                 "DEEPSEEK_API_KEY": os.getenv("DEEPSEEK_API_KEY", "your-deepseek-api-key-here"),
@@ -485,6 +617,7 @@ class Pipeline:
 
         # get all messages after the 0 (System) and concact all together and send as user
 
+        print("(process_state) messages", messages)
         response = self.client.chat.completions.create(
             model="deepseek-reasoner",
             messages=messages,
@@ -496,7 +629,7 @@ class Pipeline:
 
         print((
             "\n\n------- Reasoning ------\n"
-            f"{reasoning_content}"
+            f"{reasoning_content}\n"
             "------------------------\n\n\n"
         ))
 
@@ -522,6 +655,73 @@ class Pipeline:
             "content": SYSTEM_PROMPT.replace("{now}", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
         }
 
+        # Construct messages with system message at the start
         messages = [system_message] + messages
 
-        return self.process_state(messages).strip()
+        # Sanitize messages to remove consecutive messages with the same role
+        sanitized_messages = []
+        for msg in messages:
+            if not sanitized_messages:
+                sanitized_messages.append(msg)
+            else:
+                last_role = sanitized_messages[-1]['role']
+                if msg['role'] != last_role:
+                    sanitized_messages.append(msg)
+        messages = sanitized_messages
+
+        result = self.process_state(messages).strip()
+        
+        max_validation_attempts = 3
+        current_attempt = 0
+        best_result = result
+
+        while current_attempt < max_validation_attempts:
+            current_attempt += 1
+
+            # Validate the response quality
+            validation_response = self.client.chat.completions.create(
+                model="deepseek-reasoner",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": f"You are a response quality validator. Evaluate if the given answer is complete, clear, and satisfactory. Now is {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+                    },
+                    {
+                        "role": "user",
+                        "content": f"Original question: {user_message}\n\nGenerated answer: {result}\n\nProvide your evaluation in the following format: <evaluate>{EvaluationResponse.schema_json()}</evaluate>"
+                    }
+                ],
+                stream=False
+            )
+            
+            # Extract content between <evaluate> tags and parse into EvaluationResponse
+            validation_content = validation_response.choices[0].message.content
+            evaluate_content = validation_content.split('<evaluate>')[1].split('</evaluate>')[0]
+            validation = EvaluationResponse(**json.loads(evaluate_content))
+
+            print("Validation", validation)
+            
+            if validation.is_satisfactory:
+                break
+            
+            # If not satisfactory, append the improvement feedback and try again
+            messages.append({
+                "role": "user",
+                "content": f"The previous response needs improvement: {validation.improvement_needed}. Please provide a more complete answer."
+            })
+            result = self.process_state(messages).strip()
+
+        # Write the final answer after all interaction
+        messages.append({
+            "role": "user",
+            "content": "After all interaction, write the answer."
+        })
+        print("(final_step) messages", messages)
+        final_response = self.client.chat.completions.create(
+            model="deepseek-reasoner",
+            messages=messages,
+            stream=False
+        )
+        final_answer = final_response.choices[0].message.content
+        think = final_response.choices[0].message.reasoning_content
+        return f"<think>\b{think}\n</think>\n{final_answer}"
